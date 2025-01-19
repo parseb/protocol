@@ -15,7 +15,7 @@ Version: `2023.11.15`
 
 # 1. Smart Contracts
 
-There are a set of 3 contracts that keep track of account ids (fids), keys for the fids and the storage allocated to the fids.
+There is a set of 3 contracts that keep track of account ids (fids), keys for the fids and the storage allocated to the fids.
 
 ## 1.1 Id Registry
 
@@ -35,7 +35,7 @@ The Storage registry contract keeps track of the storage allocated to each fid. 
 
 The [canonical Storage registry contract](https://optimistic.etherscan.io/address/0x00000000fcCe7f938e7aE6D3c335bD6a1a7c593D) is deployed at `0x00000000fcCe7f938e7aE6D3c335bD6a1a7c593D` on Optimism.
 
-For a message to be accepted, the fid must be registered in the Id registry, and signed with a valid signer present the Key registry, and the fid must have enough storage allocated in the Storage registry.
+For a message to be accepted, the fid must be registered in the Id registry, and signed with a valid signer present in the Key registry, and the fid must have enough storage allocated in the Storage registry.
 
 # 2. Message Specifications
 
@@ -278,7 +278,7 @@ message CastAddBody {
   };
   string text = 4;                        // Text of the cast
   repeated uint32 mentions_positions = 5; // Byte positions of the mentions in the text
-  repeated Embed embeds = 6;              // URIs or CastIds to embedded in the cast
+  repeated Embed embeds = 6;              // URIs or CastIds to be embedded in the cast
 }
 
 
@@ -303,14 +303,15 @@ A CastAddBody in a message `m` is valid only if it passes these validations:
 
 1. `m.signature_scheme` must be `SIGNATURE_SCHEME_ED25519`.
 2. `m.data.type` must be `MESSAGE_TYPE_CAST_ADD`.
-3. `m.data.body.type` must be `CastAddBody`.
+3. `m.data.body` must be `CastAddBody` type.
 4. `m.data.body.embeds_deprecated` can contain up to 2 valid UTF8 strings whose lengths are >=1 byte and <= 256 bytes if the timestamp is <= 73612800 (5/3/23 00:00 UTC).
 5. `m.data.body.mentions` must contain between 0 and 10 256-bit integer values.
 6. `m.data.body.parent`, if present, must be a valid CastId or a UTF8 string whose length is >= 1 byte and <= 256 bytes.
-7. `m.data.body.text` must contain <= 320 bytes and be a valid UTF8 string.
-8. `m.data.body.mentions_positions` must have unique integers between 0 and length of `text` inclusive.
-9. `m.data.body.mentions_positions` integers must be in ascending order and must have as many elements as `mentions`.
-10. `m.data.body.embeds` can contain up to 2 embeds, each of which is a CastId or valid UTF8 string whose length is >=1 byte and <= 256bytes.
+7. `m.data.body.text` must contain <= 1024 bytes and be a valid UTF8 string.
+8. `m.data.body.type` must be either `CastType.CAST` for casts with text length of 0 <= length <= 320 and `CastType.LONG_CAST` for casts that are 321 <= length <= 1024
+9. `m.data.body.mentions_positions` must have unique integers between 0 and length of `text` inclusive.
+10. `m.data.body.mentions_positions` integers must be in ascending order and must have as many elements as `mentions`.
+11. `m.data.body.embeds` can contain up to 2 embeds, each of which is a CastId or valid UTF8 string whose length is >=1 byte and <= 256bytes.
 
 A CastRemoveBody in a message `m` is valid only if it passes these validations:
 
@@ -324,7 +325,7 @@ A CastId `c` is valid only if it passes these validations:
 1. `c.fid` is an integer > 0
 2. `c.hash` is exactly 20 bytes.
 
-## 1.4 Reactions
+## 2.5 Reactions
 
 A Reaction is a relationship between a user and a cast which can be one of several types.
 
@@ -362,7 +363,7 @@ A ReactionRemove in a message `m` is valid only if it passes these validations:
 
 1. `m.data.type` must be `MESSAGE_TYPE_REACTION_REMOVE`
 
-## 2.5 Verifications
+## 2.6 Verifications
 
 A Verification is a cryptographic proof of ownership of an Ethereum address.
 
@@ -409,14 +410,14 @@ A VerificationAddEthAddressBody or VerificationRemoveBody in a message `m` is va
 11. If `m.data.body.verification_type` is `1`:
     a. `m.data.body.chain_id` must be `1` or `10`.
 
-## 2.6 Links
+## 2.7 Links
 
 A Link is a relationship between two users which can be one of several types. Links are added with a `LinkAdd` message and removed with a `LinkRemove` message which shares a common body structure.
 
 ```protobuf
 message LinkBody {
   string type = 1;
-  optional uint32 displayTimestamp = 2; // If set, clients should use this as the follow create time
+  optional uint32 displayTimestamp = 2; // If set, clients should use this as the following create time
   oneof target {
     uint64 fid = 3;
   }
@@ -439,7 +440,7 @@ A LinkRemove in a message `m` is valid only if it passes these validations:
 
 1.  `m.data.type` must be `MESSAGE_TYPE_LINK_REMOVE`
 
-## 2.7 Username Proof
+## 2.8 Username Proof
 
 ```protobuf
 enum UserNameType {
@@ -483,7 +484,7 @@ A UsernameProof message `m` of type `USERNAME_TYPE_ENS_L1` must also pass these 
 
 # 3. Message-Graph Specifications
 
-A message-graph is a data structure that allows state to be updated concurrently without requiring a central authority to resolve conflicts. It consists of a series of anonymous Δ-state CRDT's, each of which govern a data type and how it can be updated. The message-graph is idempotent but because of its dependency on state, it is not commutative or associative.
+A message-graph is a data structure that allows state to be updated concurrently without requiring a central authority to resolve conflicts. It consists of a series of anonymous Δ-state CRDT's, each of which governs a data type and how it can be updated. The message-graph is idempotent but because of its dependency on state, it is not commutative or associative.
 
 ## 3.1 CRDTs
 
@@ -507,7 +508,7 @@ External actions on blockchains or in other CRDTs can cause messages to become i
 
 The UserData CRDT validates and accepts UserDataAdd messages. The CRDT also ensures that a UserDataAdd message `m` passes these validations:
 
-1. `m.signer` must be a valid Signer in the add-set of the Signer CRDT for `message.fid`
+1. `m.signer` must be a valid key with `Keystate.ADDED` in the `KeyRegistry` contract for `m.data.fid`.
 
 A conflict occurs if two messages have the same values for `m.data.fid` and `m.data.body.type`. Conflicts are resolved with the following rules:
 
@@ -520,7 +521,7 @@ The UserData CRDT has a per-unit size limit of 50, even though this is practical
 
 The Cast CRDT validates and accepts CastAdd and CastRemove messages. The CRDT also ensures that the message `m` passes these validations:
 
-1. `m.signer` must be a valid Signer in the add-set of the Signer CRDT for `message.fid`
+1. `m.signer` must be a valid key with `Keystate.ADDED` in the `KeyRegistry` contract for `m.data.fid`.
 
 A conflict occurs if there exists a CastAdd Message and a CastRemove message whose `m.hash` and `m.data.body.target_hash` are identical, or if there are two CastRemove messages whose `m.data.body.target_hash` are identical. Conflicts are resolved with the following rules:
 
@@ -534,7 +535,7 @@ The Cast CRDT has a per-unit size limit of 5,000.
 
 The Reaction CRDT validates and accepts ReactionAdd and ReactionRemove messages. The CRDT also ensures that the message `m` passes these validations:
 
-1. `m.signer` must be a valid Signer in the add-set of the Signer CRDT for `message.fid`
+1. `m.signer` must be a valid key with `Keystate.ADDED` in the `KeyRegistry` contract for `m.data.fid`.
 
 A conflict occurs if two messages have the same values for `m.data.fid`, `m.data.body.target` and `m.data.body.type`. Conflicts are resolved with the following rules:
 
@@ -548,7 +549,7 @@ The Reaction CRDT has a per-unit size limit of 2,500.
 
 The Verification CRDT validates and accepts VerificationAddEthereumAddress and VerificationRemove messages. The CRDT also ensures that the message `m` passes these validations:
 
-1. `m.signer` must be a valid Signer in the add-set of the Signer CRDT for `message.fid`
+1. `m.signer` must be a valid key with `Keystate.ADDED` in the `KeyRegistry` contract for `m.data.fid`.
 
 A conflict occurs if there are two messages with the same value for `m.data.body.address`. Conflicts are resolved with the following rules:
 
@@ -562,7 +563,7 @@ The Verification CRDT has a per-unit size limit of 25.
 
 The Link CRDT validates and accepts LinkAdd and LinkRemove messages. The CRDT also ensures that the message `m` passes these validations:
 
-1. `m.signer` must be a valid Signer in the add-set of the Signer CRDT for `message.fid`
+1. `m.signer` must be a valid key with `Keystate.ADDED` in the `KeyRegistry` contract for `m.data.fid`.
 
 A conflict occurs if there are two messages with the same values for `m.data.fid`, `m.data.body.type`, `m.data.body.target`. Conflicts are resolved with the following rules:
 
@@ -576,7 +577,7 @@ The Link CRDT has a per-unit size limit of 2,500.
 
 The UsernameProof CRDT validates and accepts UsernameProof messages. It must also continuously re-validate ownership of the username by running a job at 2am UTC to verify ownership of all fnames and ENS Proofs. The CRDT also ensures that a UsernameProof message m passes these validations:
 
-1. `m.signer` must be a valid Signer in the add-set of the Signer CRDT for `message.fid`
+1. `m.signer` must be a valid key with `Keystate.ADDED` in the `KeyRegistry` contract for `m.data.fid`.
 
 A conflict occurs if two messages that have the same value for `m.name`. Conflicts are resolved with the following rules:
 
@@ -1093,7 +1094,7 @@ A CCIP [ENSIP-10](https://docs.ens.domains/ens-improvement-proposals/ensip-10-wi
 
 ### **Name Server**
 
-The server which resolves `*.fcast.id` names lives at `fnames.facaster.xyz`. Fnames can be claimed by submitting an EIP-712 signed message that proves ownership of an fid that does not yet have an fname. The server also provides a method to transfer fnames to other fids by proving ownership of the fname.
+The server which resolves `*.fcast.id` names lives at `fnames.farcaster.xyz`. Fnames can be claimed by submitting an EIP-712 signed message that proves ownership of an fid that does not yet have an fname. The server also provides a method to transfer fnames to other fids by proving ownership of the fname.
 
 Usernames are also valid subdomains (e.g. [foo.fcast.id](http://foo.fcast.id) ) though they do not currently resolve to anything. A future upgrade to the nameserver may allow the owner to set a redirect record here. The following usernames are not available for registration, since they collide with existing subdomains — `www`, `fnames`
 

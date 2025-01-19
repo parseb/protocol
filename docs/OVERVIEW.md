@@ -80,13 +80,13 @@ Hubs need to synchronize message-graphs across thousands of instances to achieve
 
 Using CRDTs to encode these rules allows message-graphs to achieve consensus without coordination. Users can send updates to many hubs via different apps, and their state will eventually converge. Each message type has a CRDT, which compares incoming messages by resource id to catch conflicts. Last-write-wins rules combined with the timestamp-hash ordering allow for deterministic conflict resolution.
 
-Message-graph CRDTs ensure that operations are commutative, associative, and idempotent while never moving causally backward. Each CRDT has a state $S$ and a merge function $merge(m, S)$ which accepts a message returns a new state $S' >= S$. Such CRDTs are called anonymous delta-state CRDTs[^delta-state] and can sync by comparing missing messages.
+Message-graph CRDTs ensure that operations are commutative, associative, and idempotent while never moving causally backward. Each CRDT has a state $S$ and a merge function $merge(m, S)$ which accepts a message and returns a new state $S' >= S$. Such CRDTs are called anonymous delta-state CRDTs[^delta-state] and can sync by comparing missing messages.
 
 Users must only be able to add a limited amount of data to CRDTs. Otherwise, a Hub becomes impractical to operate affecting the network's decentralization. CRDT's solve this by imposing per-user size limits and evicting messages with the lowest order. Time limits can also be imposed to reduce network size by evicting messages with timestamps older than the cutoff.
 
 The message-graph has weaker guarantees than its children. Messages in most CRDTs are valid only if their signer is in the signer CRDT. A message-graph must first sync signer messages before attempting to sync other kinds to ensure convergence. Under the condition of ordered sync, message-graphs can promise strong eventual consistency.
 
-# 5. Applications
+# 6. Applications
 
 An _application_ is a program used to interact with the Farcaster network. It can be as simple as a mobile client that talks to a Hub. Apps can also have backends that interface with Hubs, doing the heavy lifting for feeds, suggestions, and notifications.
 
@@ -121,13 +121,13 @@ graph LR
     end
 ```
 
-# 6. Conclusion
+# 7. Conclusion
 
 An astute reader will note that Farcaster lacks features common in social networks. Timestamps are unreliable, data isn't permanent and there are no mechanisms for private messaging. The eventually consistent nature of the network also means that developers are exposed to more complexity when building applications.
 
 Farcaster makes these tradeoffs to achieve a level of decentralization that puts users and developers in control. It is far easier to add features to a decentralized network than it is to try and decentralize a feature-rich network. The protocol is robust enough to build simple, practical and public social networks that people will use.
 
-# 7. Acknowledgements
+# 8. Acknowledgements
 
 The Farcaster protocol would not have been possible without significant contributions from [Varun Srinivasan](https://github.com/varunsrin), [Dan Romero](https://github.com/danromero), [Shane da Silva](https://github.com/sds), [Sean Yu](https://github.com/seansu4you87), [Gavi Galloway](https://github.com/gsgalloway), [Paul Fletcher-Hill](https://github.com/pfletcherhill), [Sanjay Prabhu](https://github.com/sanjayprabhu), Sagar Dhawan, [Cassandra Heart](https://github.com/CassOnMars), [Aditya Kulkarni](https://github.com/adityapk00) and [horsefacts](https://github.com/horsefacts).
 
